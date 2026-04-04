@@ -597,7 +597,7 @@ def plot_condensed_tree_for_m(models_dict, m: int, title_prefix: str = "", figsi
         return
 
     plt.figure(figsize=figsize)
-    ct.plot(select_clusters=True, label_clusters=True)
+    ct.plot(select_clusters=False, label_clusters=False)
     if title_prefix:
         plt.title(f"{title_prefix} Condensed Tree (min_samples = {m})")
     else:
