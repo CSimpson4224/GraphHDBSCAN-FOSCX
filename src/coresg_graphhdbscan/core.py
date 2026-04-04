@@ -563,7 +563,7 @@ class CoreSGHDBSCAN:
             return
     
         plt.figure(figsize=figsize)
-        ct.plot(select_clusters=True, label_clusters=True)
+        ct.plot(select_clusters=False, label_clusters=False)
         plt.title(f"CORE-SG Condensed Tree (min_samples = {m})")
         plt.show()
 
