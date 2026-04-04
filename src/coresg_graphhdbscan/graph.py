@@ -117,6 +117,7 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
                  n_neighbors=15,
                  heuristic_connect=False,
                  min_cluster_size=None,
+                 save_models=False,
                  **kwargs):
 
         # store graph params
@@ -141,7 +142,7 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
         if 'mst_approx' in kwargs:
             heuristic_connect = kwargs.pop('mst_approx')
         self.heuristic_connect = bool(heuristic_connect)
-
+        self.save_models = bool(save_models)
         # Backward-compatible handling of removed parameters.
         kwargs.pop('force_connected', None)
         kwargs.pop('gamma', None)
@@ -170,6 +171,7 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
             min_samples_list=self.m_list,
             metric=core_metric,
             min_cluster_size=resolved_min_cluster_size,
+            save_models=self.save_models,
             **kwargs
         )
         self.min_cluster_size = resolved_min_cluster_size
@@ -601,6 +603,7 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
             min_samples_list=self.m_list,
             metric="precomputed",
             min_cluster_size=self.min_cluster_size,
+            save_models=self.save_models,
         )
         self.coresg_.fit_from_distance_matrix(self.dist_matrix_)
         self.coresg_.run()
@@ -653,6 +656,7 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
         self.coresg_ = CoreSGHDBSCAN(
             min_samples_list=list(m_list),
             min_cluster_size=self.min_cluster_size,
+            save_models=self.save_models,
             **coresg_kwargs
         ).fit_from_distance_matrix(self.dist_matrix_)
         self.coresg_.run()
@@ -677,7 +681,7 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
         numpy.ndarray
             Cluster labels for the requested fitted solution.
         """
-        labels = self.coresg_.models_[m].labels_
+        labels = self.coresg_.labels_by_m_[m]
 
         if no_noise is None:
             no_noise = self.no_noise
