@@ -143,6 +143,9 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
             heuristic_connect = kwargs.pop('mst_approx')
         self.heuristic_connect = bool(heuristic_connect)
         self.save_models = bool(save_models)
+        self.models_ = {}
+        self.condensed_trees_ = {}
+        self.labels_by_m_ = {}
         # Backward-compatible handling of removed parameters.
         kwargs.pop('force_connected', None)
         kwargs.pop('gamma', None)
@@ -607,6 +610,9 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
         )
         self.coresg_.fit_from_distance_matrix(self.dist_matrix_)
         self.coresg_.run()
+        self.models_ = self.coresg_.models_
+        self.condensed_trees_ = self.coresg_.condensed_trees_
+        self.labels_by_m_ = self.coresg_.labels_by_m_
         return self
 
 
@@ -660,6 +666,9 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
             **coresg_kwargs
         ).fit_from_distance_matrix(self.dist_matrix_)
         self.coresg_.run()
+        self.models_ = self.coresg_.models_
+        self.condensed_trees_ = self.coresg_.condensed_trees_
+        self.labels_by_m_ = self.coresg_.labels_by_m_
         return self
 
 
@@ -694,23 +703,6 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
             )
         return labels
 
-    @property
-    def models_(self):
-        if not hasattr(self, "coresg_") or self.coresg_ is None:
-            return {}
-        return self.coresg_.models_
-    
-    @property
-    def condensed_trees_(self):
-        if not hasattr(self, "coresg_") or self.coresg_ is None:
-            return {}
-        return self.coresg_.condensed_trees_
-    
-    @property
-    def labels_by_m_(self):
-        if not hasattr(self, "coresg_") or self.coresg_ is None:
-            return {}
-        return self.coresg_.labels_by_m_
         
     def plot_condensed_tree(self, m, figsize=(10, 6), **kwargs):
         """
