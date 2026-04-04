@@ -694,7 +694,24 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
             )
         return labels
 
-
+    @property
+    def models_(self):
+        if not hasattr(self, "coresg_") or self.coresg_ is None:
+            return {}
+        return self.coresg_.models_
+    
+    @property
+    def condensed_trees_(self):
+        if not hasattr(self, "coresg_") or self.coresg_ is None:
+            return {}
+        return self.coresg_.condensed_trees_
+    
+    @property
+    def labels_by_m_(self):
+        if not hasattr(self, "coresg_") or self.coresg_ is None:
+            return {}
+        return self.coresg_.labels_by_m_
+        
     def plot_condensed_tree(self, m, figsize=(10, 6), **kwargs):
         """
         Plot the condensed tree for a selected ``min_samples`` value.
