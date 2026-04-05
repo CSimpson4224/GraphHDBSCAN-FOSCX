@@ -1,7 +1,12 @@
 Examples
 ========
 
-These notebooks show practical examples for GraphHDBSCAN.
+The example notebooks demonstrate how to:
+
+- fit the package across multiple ``min_samples`` values,
+- inspect condensed trees,
+- compare clustering solutions across ``m``,
+- access stored labels and condensed trees after fitting.
 
 .. toctree::
    :maxdepth: 1
