@@ -151,10 +151,9 @@ class CoreSGModel:
         Persistence score for each cluster.
     single_linkage_tree_ : object
         Single-linkage tree wrapper.
-    stabilities : numpy.ndarray or dict
-        Cluster stability information.
-    condensed_tree_array : numpy.ndarray
-        Raw condensed tree array.
+    cluster_persistence_ : numpy.ndarray
+        Cluster persistence values returned by the HDBSCAN*-style cluster
+        selection step.
     condensed_tree_ : hdbscan.plots.CondensedTree
         Condensed tree object for plotting and inspection.
     """
