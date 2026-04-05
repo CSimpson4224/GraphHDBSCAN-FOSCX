@@ -25,6 +25,7 @@ The package currently supports the following capabilities:
 - optional relabeling of noise points by MST-based propagation
 - compatibility with NetworkX graphs, dense adjacency matrices, and sparse adjacency matrices in precomputed mode
 - access to HDBSCAN*-style outputs such as labels, probabilities, and condensed trees
+- direct access to stored labels, condensed trees, and optional per-``m`` models
 
 Package structure
 -----------------
