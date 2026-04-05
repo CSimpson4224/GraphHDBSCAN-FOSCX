@@ -803,7 +803,7 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
     
         if m in getattr(self.coresg_, "condensed_trees_", {}):
             ct = self.coresg_.condensed_trees_[m]
-        elif m in getattr(self.coresg_, "s_", {}):
+        elif m in getattr(self.coresg_, "models_", {}):
             ct = self.coresg_.models_[m].condensed_tree_
         else:
             raise KeyError(f"m={m} not found in CORE-SG results.")
