@@ -138,7 +138,8 @@ def prim_mrd_mst_edges_from_D(D: np.ndarray, core: np.ndarray) -> np.ndarray:
 # ===========================================
 class CoreSGModel:
     """
-    Lightweight wrapper that mimics the HDBSCAN attributes used by this package.
+    Lightweight wrapper that mimics the HDBSCAN attributes used by this package. 
+    Stored result object for one fitted ``min_samples`` value.
 
     Attributes
     ----------
@@ -148,10 +149,14 @@ class CoreSGModel:
         Membership strengths for each sample.
     cluster_persistence_ : numpy.ndarray
         Persistence score for each cluster.
-    condensed_tree_ : object
-        Condensed tree wrapper with plotting support.
     single_linkage_tree_ : object
         Single-linkage tree wrapper.
+    stabilities : numpy.ndarray or dict
+        Cluster stability information.
+    condensed_tree_array : numpy.ndarray
+        Raw condensed tree array.
+    condensed_tree_ : hdbscan.plots.CondensedTree
+        Condensed tree object for plotting and inspection.
     """
 
     def __init__(self,
@@ -465,6 +470,18 @@ class CoreSGHDBSCAN:
             allow_single_cluster: bool = False,
             match_reference_implementation: bool = False,
             cluster_selection_epsilon: float = 0.0) -> "CoreSGHDBSCAN":
+        """
+        Run Core-SG clustering for all requested ``min_samples`` values.
+        
+        Stores
+        ------
+        models_ : dict
+            Saved per-``m`` models when ``save_models=True``.
+        condensed_trees_ : dict
+            Condensed tree objects for all fitted ``m`` values.
+        labels_by_m_ : dict
+            Stored labels for all fitted ``m`` values.
+        """
 
         if self.D_ is None or self.edges_ut_ is None or not self.core_:
             raise RuntimeError("Call fit(X) before run().")
