@@ -30,16 +30,6 @@ If you want to install directly from the repository:
 
    pip install git+https://github.com/Campello-Lab/GraphHDBSCAN.git
 
-.. Documentation dependencies
-.. ^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. If you are also building the documentation locally, install the docs
-.. requirements:
-
-.. .. code-block:: bash
-
-..    pip install -r docs/requirements.txt
-
 Typical dependencies
 --------------------
 
@@ -112,6 +102,7 @@ A minimal clustering workflow looks like this:
        n_neighbors=15,
        no_noise=True,
        heuristic_connect=False,
+       save_models=False,
    )
 
    model.fit(X)
@@ -124,6 +115,7 @@ This example uses:
 - ``metric="euclidean"`` as the default metric strategy
 - ``n_neighbors=15`` as the default local graph size
 - ``no_noise=True`` to reassign noise points after clustering
+- ``save_models=False`` to avoid storing full per-``min_samples`` model objects
 
 Single ``min_samples`` value
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -152,6 +144,48 @@ in a single run and inspect them later.
 
 This is useful when you want to compare clustering solutions across several
 density settings without repeating the full workflow from scratch.
+
+Inspecting stored results
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+After fitting, the package stores labels and condensed trees for each fitted
+``min_samples`` value.
+
+.. code-block:: python
+
+   model = GraphCoreSGHDBSCAN(
+       min_samples=range(2, 20),
+       sim_graph_method="sc_gauss",
+       metric="euclidean",
+       n_neighbors=16,
+       save_models=False,
+   )
+   model.fit(X)
+
+   labels_10 = model.labels_by_m_[10]
+   tree_10 = model.condensed_trees_[10]
+
+If you want full saved per-``min_samples`` model objects as well, enable
+``save_models=True``:
+
+.. code-block:: python
+
+   model = GraphCoreSGHDBSCAN(
+       min_samples=range(2, 20),
+       sim_graph_method="sc_gauss",
+       metric="euclidean",
+       n_neighbors=16,
+       save_models=True,
+   )
+   model.fit(X)
+
+   labels_10 = model.labels_by_m_[10]
+   tree_10 = model.condensed_trees_[10]
+   model_10 = model.models_[10]
+
+``labels_by_m_[m]`` stores the directly fitted labels. By contrast,
+``labels_for(m)`` may apply post-processing depending on the ``no_noise``
+setting.
 
 Precomputed graph input
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -188,6 +222,13 @@ condensed tree:
 If you fit multiple ``min_samples`` values, inspect a specific one by passing
 the selected value.
 
+You can also browse condensed trees interactively in a notebook environment:
+
+.. code-block:: python
+
+   model.fit(X)
+   model.interactive_condensed_tree()
+
 Typical workflow
 ----------------
 
@@ -213,11 +254,14 @@ A good exploratory run looks like:
        no_noise=True,
        metric="euclidean",
        heuristic_connect=True,
+       save_models=True,
    )
 
    g.fit(X)
    g.plot_condensed_tree(4)
    labels_18 = g.labels_for(18)
+   tree_18 = g.condensed_trees_[18]
+   model_18 = g.models_[18]
 
 Troubleshooting installation
 ----------------------------
@@ -233,9 +277,6 @@ Helpful check:
 .. code-block:: bash
 
    python -c "from coresg_graphhdbscan import GraphCoreSGHDBSCAN; print('ok')"
-
-.. If you are building documentation and imports fail during Sphinx builds, it may
-.. also help to mock heavy imports in ``docs/source/conf.py``.
 
 Related pages
 -------------
