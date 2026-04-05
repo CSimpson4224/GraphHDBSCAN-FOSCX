@@ -89,3 +89,6 @@ myst_enable_extensions = [
     "colon_fence",
     "deflist",
 ]
+
+autoclass_content = "both"
+autodoc_typehints = "description"
