@@ -13,6 +13,7 @@ For most users, the most important decisions are:
 - ``heuristic_connect``
 - ``no_noise``
 - ``min_cluster_size``
+- ``save_models``
 
 Start here
 ----------
@@ -40,6 +41,7 @@ A simple way to think about the main settings is:
 - use ``n_neighbors`` to control local graph density
 - use ``heuristic_connect`` to decide how disconnected graphs are handled
 - use ``no_noise`` to decide whether noise points should be reassigned
+- use ``save_models`` to decide whether full per-``min_samples`` model objects should be stored
 
 Constructor
 -----------
@@ -57,6 +59,7 @@ The public constructor is:
        n_neighbors=15,
        heuristic_connect=False,
        min_cluster_size=None,
+       save_models=False,
        **kwargs
    )
 
@@ -94,6 +97,9 @@ At-a-glance reference
    * - ``min_cluster_size``
      - ``None``
      - Minimum cluster size in the clustering stage.
+   * - ``save_models``
+     - ``False``
+     - Stores full saved models for each fitted ``min_samples`` value.
 
 How to choose each parameter
 ----------------------------
@@ -177,6 +183,9 @@ Supported inputs in ``precomputed`` mode:
 - a SciPy sparse adjacency matrix
 - a square dense adjacency matrix
 
+When using ``"precomputed"``, the input to ``fit(...)`` is treated as an
+already constructed graph representation rather than raw feature data.
+
 Practical recommendation:
 
 - start with ``"sc_umap"``
@@ -200,25 +209,24 @@ Supported values are:
 Choosing a metric:
 
 ``euclidean``
-   Default mode. Euclidean distances are used for distance computation and
-   graph construction.
+   Euclidean distances are used to compute ``distances_full`` and graph
+   construction then uses precomputed neighbors from that matrix.
 
 ``cosine``
-   Cosine distances are used for graph construction. This is often useful
-   when angular similarity is more meaningful than raw Euclidean distance.
+   Cosine distances are used to compute ``distances_full`` and graph
+   construction then uses precomputed neighbors from that matrix.
 
 ``hybrid_euclidean_cosine``
-   Full pairwise distances remain Euclidean, but the neighborhood graph is
-   constructed using cosine geometry. This is useful when you want global
-   geometry to remain Euclidean while local neighborhood structure follows
-   angular similarity.
+   Euclidean distances are used to compute ``distances_full``, while the
+   graph-construction stage applies a cosine-based second step on that
+   Euclidean distance representation.
 
 Practical recommendation:
 
 - use ``"euclidean"`` for standard geometric tabular data
 - use ``"cosine"`` when direction matters more than magnitude
 - use ``"hybrid_euclidean_cosine"`` when you want Euclidean global distances
-  but cosine-based local neighborhoods
+  together with a cosine-based second-stage graph construction
 
 Example:
 
@@ -227,7 +235,7 @@ Example:
    model = GraphCoreSGHDBSCAN(
        min_samples=range(2, 10),
        sim_graph_method="sc_umap",
-       metric="hybrid_euclidean_cosine",
+       metric="cosine",
        n_neighbors=16,
    )
 
@@ -332,14 +340,63 @@ Default: ``None``
 
 This is the minimum cluster size used in the clustering stage.
 
-When left as ``None``, the package follows the selected ``min_samples``
-value for each run.
+When left as ``None``, the package uses the selected ``min_samples`` value
+for each run, so the effective minimum cluster size becomes ``m`` for each
+fitted ``min_samples = m``.
+
+If you set ``min_cluster_size`` explicitly, that fixed value is used for all
+selected ``min_samples`` values.
 
 Practical recommendation:
 
 - leave it as ``None`` if you want cluster size to track ``min_samples``
 - set it explicitly if you want a fixed minimum cluster size independent of
   the selected ``min_samples`` values
+
+
+``save_models``
+^^^^^^^^^^^^^^^
+
+Default: ``False``
+
+This controls whether full per-``min_samples`` model objects are stored after
+fitting.
+
+``save_models=False``
+   The package still stores labels and condensed trees for each fitted
+   ``min_samples`` value, but it does not keep full saved model objects.
+
+``save_models=True``
+   The package also stores full per-``m`` models in ``models_``.
+
+Practical recommendation:
+
+- use ``False`` if you mainly want labels and condensed trees with lower
+  memory usage
+- use ``True`` if you want direct access to saved per-``m`` model objects
+
+Example:
+
+.. code-block:: python
+
+   model = GraphCoreSGHDBSCAN(
+       min_samples=range(2, 20),
+       sim_graph_method="sc_gauss",
+       metric="euclidean",
+       save_models=True,
+   )
+   model.fit(X)
+
+   labels_10 = model.labels_by_m_[10]
+   tree_10 = model.condensed_trees_[10]
+   model_10 = model.models_[10]
+
+Notes:
+
+- ``labels_by_m_`` and ``condensed_trees_`` are available after fitting
+  regardless of ``save_models``.
+- ``models_`` is mainly useful when you want to inspect the full saved result
+  object for a specific ``min_samples`` value.
 
 Practical selection workflow
 ----------------------------
@@ -364,8 +421,14 @@ A good exploratory run looks like:
        no_noise=True,
        metric="euclidean",
        heuristic_connect=True,
+       save_models=True,
    )
    g.fit(X)
+
+After fitting several values, the package stores results by
+``min_samples`` value. Labels are available in ``labels_by_m_``, condensed
+trees are available in ``condensed_trees_``, and full saved models are
+available in ``models_`` when ``save_models=True``.
 
 Then inspect the hierarchy and choose a specific solution:
 
@@ -373,6 +436,9 @@ Then inspect the hierarchy and choose a specific solution:
 
    g.plot_condensed_tree(4)
    labels_18 = g.labels_for(18)
+   tree_18 = g.condensed_trees_[18]
+   model_18 = g.models_[18]
+
 
 Ready-to-use presets
 --------------------
@@ -500,3 +566,10 @@ Practical notes
   later for the requested value.
 - Some graph builders depend on optional packages and will raise a clear import
   error if those packages are not installed.
+- ``labels_by_m_[m]`` stores the directly fitted labels for a selected
+  ``min_samples`` value.
+- ``labels_for(m)`` may additionally apply noise reassignment depending on
+  the ``no_noise`` setting.
+- ``condensed_trees_[m]`` gives direct access to the condensed tree for a
+  selected ``min_samples`` value.
+- ``models_[m]`` is available when ``save_models=True``.
