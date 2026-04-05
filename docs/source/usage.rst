@@ -409,6 +409,70 @@ Precomputed graph workflow
    model.fit(my_graph)
    model.plot_condensed_tree(10)
 
+
+Working with fitted results
+---------------------------
+
+After calling ``fit()``, the package stores results for each fitted
+``min_samples`` value.
+
+.. code-block:: python
+
+   g = GraphCoreSGHDBSCAN(
+       min_samples=range(2, 20),
+       sim_graph_method="sc_gauss",
+       metric="euclidean",
+       n_neighbors=16,
+       no_noise=True,
+       save_models=True,
+   )
+   g.fit(X)
+
+Stored labels
+^^^^^^^^^^^^^
+
+.. code-block:: python
+
+   labels_5 = g.labels_by_m_[5]
+
+You can also use:
+
+.. code-block:: python
+
+   labels_5 = g.labels_for(5)
+
+Note that ``labels_for(m)`` may apply noise reassignment depending on
+the ``no_noise`` setting, while ``labels_by_m_[m]`` is the directly
+stored fitted result.
+
+Stored condensed trees
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: python
+
+   tree_5 = g.condensed_trees_[5]
+
+Plot a selected condensed tree:
+
+.. code-block:: python
+
+   g.plot_condensed_tree(5)
+
+Interactive condensed tree browser:
+
+.. code-block:: python
+
+   g.interactive_condensed_tree()
+
+Stored models
+^^^^^^^^^^^^^
+
+If ``save_models=True``, full per-``m`` models are available:
+
+.. code-block:: python
+
+   model_5 = g.models_[5]
+
 Practical notes
 ---------------
 
@@ -421,6 +485,16 @@ Practical notes
 - ``interactive_condensed_tree()`` is best suited for live notebooks.
 - Some graph builders depend on optional packages and will raise an import
   error if those packages are not installed.
+
+Notebook tip
+^^^^^^^^^^^^
+
+In notebook environments, use a trailing semicolon to suppress the
+display of the fitted object representation:
+
+.. code-block:: python
+
+   g.fit(X);
 
 Related pages
 -------------
