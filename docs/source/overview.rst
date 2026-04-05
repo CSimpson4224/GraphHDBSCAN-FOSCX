@@ -92,6 +92,43 @@ A simple starting example is:
    model.fit(X)
    labels = model.fit_predict(X)
 
+Stored results after fitting
+----------------------------
+
+After fitting, the package stores results for each tested
+``min_samples`` value.
+
+The main user-facing object is ``GraphCoreSGHDBSCAN``. Internally, it
+runs a Core-SG engine across one or more ``min_samples`` values and
+stores per-``m`` results.
+
+The most important fitted result containers are:
+
+- ``labels_by_m_``:
+  dictionary mapping each fitted ``min_samples`` value to its stored
+  cluster labels.
+- ``condensed_trees_``:
+  dictionary mapping each fitted ``min_samples`` value to its condensed
+  tree object.
+- ``models_``:
+  dictionary mapping each fitted ``min_samples`` value to a saved model
+  object when ``save_models=True``.
+
+This makes it possible to inspect a fitted solution directly without
+re-running the model.
+
+Typical post-fit access looks like:
+
+.. code-block:: python
+
+   g.fit(X)
+
+   labels_10 = g.labels_by_m_[10]
+   tree_10 = g.condensed_trees_[10]
+
+   # only available when save_models=True
+   model_10 = g.models_[10]
+
 Related pages
 -------------
 
