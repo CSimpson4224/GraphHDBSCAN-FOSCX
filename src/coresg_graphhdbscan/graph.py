@@ -20,7 +20,13 @@ from sklearn.metrics.pairwise import rbf_kernel
 from sklearn.neighbors import NearestNeighbors as NN, kneighbors_graph
 import heapq
 from collections.abc import Iterable
-
+try:
+    from numba import njit, prange
+    _HAS_NUMBA = True
+except Exception:
+    njit = None
+    prange = range
+    _HAS_NUMBA = False
 
 def _optional_import(module_name, package_name=None):
     try:
@@ -42,6 +48,42 @@ def _get_scanpy_modules():
         sc_neighbors_connectivity.umap,
         sc_neighbors_common._get_indices_distances_from_dense_matrix,
     )
+
+if _HAS_NUMBA:
+
+    @njit(parallel=True, cache=True)
+    def _directed_jaccard_weights_numba(knn_idx, sorted_knn_idx):
+        n, k = knn_idx.shape
+        weights = np.zeros((n, k), dtype=np.float64)
+
+        for i in prange(n):
+            ni = sorted_knn_idx[i]
+
+            for t in range(k):
+                j = knn_idx[i, t]
+                nj = sorted_knn_idx[j]
+
+                a = 0
+                b = 0
+                shared = 0
+
+                while a < k and b < k:
+                    va = ni[a]
+                    vb = nj[b]
+
+                    if va == vb:
+                        shared += 1
+                        a += 1
+                        b += 1
+                    elif va < vb:
+                        a += 1
+                    else:
+                        b += 1
+
+                if shared > 0:
+                    weights[i, t] = shared / ((2.0 * k) - shared)
+
+        return weights
 
 
 class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
@@ -133,6 +175,7 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
                  heuristic_connect=False,
                  min_cluster_size=None,
                  save_models=False,
+                 similarity_backend="auto",
                  **kwargs):
 
         # store graph params
@@ -148,7 +191,15 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
                 f"Unsupported metric '{metric}'. "
                 f"Use one of {sorted(valid_metrics)}."
             )
-
+            
+        valid_similarity_backends = {"auto", "default", "numba"}
+        if similarity_backend not in valid_similarity_backends:
+            raise ValueError(
+                "similarity_backend must be one of "
+                f"{sorted(valid_similarity_backends)}, got {similarity_backend!r}."
+            )
+        
+        self.similarity_backend = similarity_backend
         self.sim_graph_method = sim_graph_method
         self.metric = metric
         self.add_neighbor = add_neighbor
@@ -332,6 +383,74 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
         graph.remove_edges_from([(u, v) for u, v, d in graph.edges(data=True) if d.get('weight', 0) == 0])
         return graph
 
+
+    def _fast_phenograph_jaccard_from_knn_graph(self, knn_graph):
+        """
+        Fast replacement for PhenoGraph's Jaccard graph construction.
+    
+        Input is the same sparse kNN graph that the old code passed to:
+    
+            sce.tl.phenograph(knn_dist, directed=False, clustering_algo=None)
+    
+        Output matches PhenoGraph's default undirected Jaccard graph.
+        """
+        if not _HAS_NUMBA:
+            raise ImportError(
+                "Fast jaccard_phenograph requires numba. "
+                "Install it with `pip install numba`."
+            )
+    
+        knn_graph = knn_graph.tocsr()
+        n = knn_graph.shape[0]
+    
+        if n <= 1:
+            return sp.csr_matrix((n, n), dtype=np.float64)
+    
+        # The old branch passes a kNN graph with exactly self.n_neighbors - 1
+        # neighbors per row.
+        k = int(self.n_neighbors) - 1
+    
+        if k < 1:
+            raise ValueError("n_neighbors must be at least 2 for jaccard_phenograph.")
+    
+        indptr = knn_graph.indptr
+        indices = knn_graph.indices
+    
+        row_counts = np.diff(indptr)
+        if not np.all(row_counts == k):
+            raise ValueError(
+                "Expected the kNN graph to have exactly "
+                f"{k} neighbors per row, but got row counts from "
+                f"{row_counts.min()} to {row_counts.max()}."
+            )
+    
+        knn_idx = indices.reshape(n, k).astype(np.int32, copy=False)
+        sorted_knn_idx = np.sort(knn_idx, axis=1).astype(np.int32, copy=False)
+    
+        weights = _directed_jaccard_weights_numba(
+            knn_idx,
+            sorted_knn_idx,
+        )
+    
+        rows = np.repeat(np.arange(n, dtype=np.int32), k)
+        cols = knn_idx.ravel()
+        data = weights.ravel()
+    
+        mask = data > 0.0
+    
+        directed = sp.csr_matrix(
+            (data[mask], (rows[mask], cols[mask])),
+            shape=(n, n),
+            dtype=np.float64,
+        )
+        directed.eliminate_zeros()
+    
+        conn = (directed + directed.T).multiply(0.5)
+        conn = sp.tril(conn, k=-1).tocsr()
+        conn.eliminate_zeros()
+    
+        return conn
+    
     def create_similarity_graph(self, data):
         if self.sim_graph_method == 'precomputed':
             return self._coerce_precomputed_graph(data)
@@ -370,12 +489,27 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
                     metric='cosine',
                     include_self=False,
                 )
-
-            _, conn, _ = sce.tl.phenograph(
-                knn_dist,
-                directed=False,
-                clustering_algo=None,
-            )
+        
+            if self.similarity_backend == "numba":
+                conn = self._fast_phenograph_jaccard_from_knn_graph(knn_dist)
+        
+            elif self.similarity_backend == "default":
+                _, conn, _ = sce.tl.phenograph(
+                    knn_dist,
+                    directed=False,
+                    clustering_algo=None,
+                )
+        
+            else:  # similarity_backend == "auto"
+                if _HAS_NUMBA:
+                    conn = self._fast_phenograph_jaccard_from_knn_graph(knn_dist)
+                else:
+                    _, conn, _ = sce.tl.phenograph(
+                        knn_dist,
+                        directed=False,
+                        clustering_algo=None,
+                    )
+        
             return nx.from_scipy_sparse_array(conn.tocsr(), edge_attribute='weight')
 
         if self.sim_graph_method == 'sc_gauss':
