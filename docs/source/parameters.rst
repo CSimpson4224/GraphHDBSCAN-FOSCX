@@ -14,6 +14,7 @@ For most users, the most important decisions are:
 - ``no_noise``
 - ``min_cluster_size``
 - ``save_models``
+- ``similarity_backend``
 
 Start here
 ----------
@@ -42,6 +43,7 @@ A simple way to think about the main settings is:
 - use ``heuristic_connect`` to decide how disconnected graphs are handled
 - use ``no_noise`` to decide whether noise points should be reassigned
 - use ``save_models`` to decide whether full per-``min_samples`` model objects should be stored
+- use ``similarity_backend`` to choose whether accelerated graph-construction backends are used when available
 
 Constructor
 -----------
@@ -60,6 +62,7 @@ The public constructor is:
        heuristic_connect=False,
        min_cluster_size=None,
        save_models=False,
+       similarity_backend="auto",
        **kwargs
    )
 
@@ -100,6 +103,9 @@ At-a-glance reference
    * - ``save_models``
      - ``False``
      - Stores full saved models for each fitted ``min_samples`` value.
+   * - ``similarity_backend``
+     - ``"auto"``
+     - Chooses the backend used for similarity graph construction when alternative implementations are available.
 
 How to choose each parameter
 ----------------------------
@@ -171,7 +177,11 @@ Choosing a method:
    Useful when you want Scanpy's Gaussian connectivity construction.
 
 ``jaccard_phenograph``
-   Useful when you want a PhenoGraph-style graph construction.
+   Useful when you want a PhenoGraph-style Jaccard neighborhood graph. The
+   backend used for this graph can be controlled with
+   ``similarity_backend``. With ``similarity_backend="auto"``, the package uses
+   the accelerated ``numba`` backend when available and otherwise falls back to
+   the default PhenoGraph-based path.
 
 ``precomputed``
    Use this when you already have a graph or adjacency representation and do
@@ -192,6 +202,86 @@ Practical recommendation:
 - try ``"sc_gauss"`` if you prefer Gaussian connectivity
 - use ``"jaccard_phenograph"`` for PhenoGraph-style neighborhood structure
 - use ``"precomputed"`` when your graph is part of the experimental design
+
+``similarity_backend``
+^^^^^^^^^^^^^^^^^^^^^^
+
+Default: ``"auto"``
+
+This parameter controls which backend is used for similarity graph construction
+when alternative implementations are available.
+
+Supported values are:
+
+- ``"auto"``
+- ``"default"``
+- ``"numba"``
+
+Currently, this option mainly affects ``sim_graph_method="jaccard_phenograph"``.
+
+``auto``
+   Uses the accelerated ``numba`` implementation when ``numba`` is available.
+   If ``numba`` is not available, the package falls back to the default
+   implementation.
+
+``default``
+   Uses the original default implementation. For
+   ``sim_graph_method="jaccard_phenograph"``, this means using the
+   Scanpy/PhenoGraph graph-construction path.
+
+``numba``
+   Uses the ``numba``-accelerated implementation when available. For
+   ``sim_graph_method="jaccard_phenograph"``, this computes the
+   PhenoGraph-style Jaccard graph using a compiled implementation. If
+   ``numba`` is not installed, an import error is raised.
+
+For ``jaccard_phenograph``, the ``numba`` backend is designed to reproduce the
+same PhenoGraph-style undirected Jaccard graph as the default backend, while
+reducing the time spent in Jaccard graph construction.
+
+The undirected graph is constructed in the same style as PhenoGraph: directed
+Jaccard weights are computed first, both directions are averaged, and the
+lower-triangular sparse graph is retained internally before conversion to the
+package graph representation.
+
+Practical recommendation:
+
+- keep ``similarity_backend="auto"`` for normal use
+- use ``similarity_backend="default"`` when you want the original backend for
+  comparison or debugging
+- use ``similarity_backend="numba"`` when you specifically want the accelerated
+  implementation and want an error if ``numba`` is unavailable
+
+Example:
+
+.. code-block:: python
+
+   model = GraphCoreSGHDBSCAN(
+       sim_graph_method="jaccard_phenograph",
+       similarity_backend="auto",
+       n_neighbors=15,
+       metric="euclidean",
+   )
+
+To force the accelerated backend:
+
+.. code-block:: python
+
+   model = GraphCoreSGHDBSCAN(
+       sim_graph_method="jaccard_phenograph",
+       similarity_backend="numba",
+       n_neighbors=15,
+   )
+
+To force the original PhenoGraph-based backend:
+
+.. code-block:: python
+
+   model = GraphCoreSGHDBSCAN(
+       sim_graph_method="jaccard_phenograph",
+       similarity_backend="default",
+       n_neighbors=15,
+   )
 
 ``metric``
 ^^^^^^^^^^
@@ -515,6 +605,31 @@ Precomputed graph input
    )
    model.fit(my_graph)
 
+PhenoGraph-style Jaccard graph
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: python
+
+   model = GraphCoreSGHDBSCAN(
+       min_samples=10,
+       sim_graph_method="jaccard_phenograph",
+       similarity_backend="auto",
+       metric="euclidean",
+       n_neighbors=15,
+   )
+   model.fit(X)
+
+For reproducibility checks against the original backend, use:
+
+.. code-block:: python
+
+   model = GraphCoreSGHDBSCAN(
+       min_samples=10,
+       sim_graph_method="jaccard_phenograph",
+       similarity_backend="default",
+       n_neighbors=15,
+   )
+
 Troubleshooting by symptom
 --------------------------
 
@@ -554,6 +669,16 @@ Try:
 - increasing ``n_neighbors``
 - using ``no_noise=True`` if a full assignment is desired
 
+Jaccard graph construction is slow
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Try:
+
+- using ``similarity_backend="auto"`` or ``similarity_backend="numba"``
+- reducing ``n_neighbors`` if the neighborhood graph is unnecessarily dense
+- using ``similarity_backend="default"`` only when you need the original
+  PhenoGraph-based backend for comparison or debugging
+
 Practical notes
 ---------------
 
@@ -573,3 +698,9 @@ Practical notes
 - ``condensed_trees_[m]`` gives direct access to the condensed tree for a
   selected ``min_samples`` value.
 - ``models_[m]`` is available when ``save_models=True``.
+- ``similarity_backend="auto"`` uses accelerated similarity-graph construction
+  when available. Currently this mainly affects
+  ``sim_graph_method="jaccard_phenograph"``.
+- The ``numba`` backend may have a one-time compilation cost on first use, but
+  can substantially reduce the time spent constructing PhenoGraph-style
+  Jaccard graphs for larger datasets.
