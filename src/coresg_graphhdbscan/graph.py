@@ -118,7 +118,8 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
         Number of neighbors used during graph construction.
 
     heuristic_connect : bool, default=False
-        If True, increase ``n_neighbors`` until the graph becomes connected.
+        If True, increase ``n_neighbors`` until the WSS dissimilarity graph becomes connected,
+        except in precomputed mode, where bridge edges are used instead.
         If False, disconnected components are connected with synthetic bridge
         edges.
 
@@ -368,7 +369,12 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
     def _coerce_precomputed_graph(graph_like):
         """Convert a supported precomputed graph representation into a NetworkX graph."""
         if isinstance(graph_like, nx.Graph):
-            graph = graph_like.copy()
+            graph = nx.convert_node_labels_to_integers(
+                graph_like,
+                first_label=0,
+                ordering="default",
+                label_attribute="original_label",
+            )
         elif hasattr(graph_like, 'tocoo'):
             graph = nx.from_scipy_sparse_array(graph_like, edge_attribute='weight')
         else:
@@ -553,7 +559,7 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
             "Unsupported sim_graph_method. Use one of 'sc_gauss', 'sc_umap', 'jaccard_phenograph', or 'precomputed'."
         )
 
-    def connect_graph_heuristically(self, graph, data):
+    def connect_graph_heuristically(self, graph, n_obs):
         """Connect disconnected components with synthetic bridge edges.
     
         This function assumes `graph` is already a dissimilarity graph:
@@ -565,7 +571,7 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
         It only adds bridge edges of distance weight 1 between disconnected components.
         """
         new_graph = graph.copy()
-        new_graph.add_nodes_from(range(len(data)))
+        new_graph.add_nodes_from(range(n_obs))
     
         if nx.is_connected(new_graph):
             return new_graph
@@ -747,7 +753,13 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
         # 1. Build initial similarity graph
         # ------------------------------------------------------------
         self.similarity_graph_ = self.create_similarity_graph(self.data_)
-        self.similarity_graph_.add_nodes_from(range(len(self.data_)))
+    
+        # Use the graph size, not len(self.data_).
+        # This is safer for precomputed NetworkX graphs and scipy sparse matrices.
+        n_obs = self.similarity_graph_.number_of_nodes()
+        self.n_obs_ = n_obs
+    
+        self.similarity_graph_.add_nodes_from(range(n_obs))
     
         # ------------------------------------------------------------
         # 2. Compute WSS similarity, then convert to dissimilarity
@@ -772,9 +784,8 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
         # 4. If disconnected and NOT precomputed, optionally increase
         #    n_neighbors until the WSS dissimilarity graph is connected.
         #
-        #    Important:
         #    In precomputed mode, n_neighbors cannot change the graph,
-        #    so we skip this block.
+        #    so this block is skipped.
         # ------------------------------------------------------------
         self.n_neighbors_initial_ = self.n_neighbors
         self.n_neighbors_used_ = self.n_neighbors
@@ -786,7 +797,7 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
         ):
             original_n_neighbors = self.n_neighbors
             new_n_neighbors = self.n_neighbors
-            max_neighbors = len(self.data_)
+            max_neighbors = n_obs
     
             while n_components > 1 and new_n_neighbors < max_neighbors:
                 new_n_neighbors += 1
@@ -797,7 +808,7 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
                 # Rebuild the full correct pipeline:
                 # similarity graph -> WSS similarity -> WSS dissimilarity
                 self.similarity_graph_ = self.create_similarity_graph(self.data_)
-                self.similarity_graph_.add_nodes_from(range(len(self.data_)))
+                self.similarity_graph_.add_nodes_from(range(n_obs))
     
                 self.similarity_graph_WSS_sparse_ = self.compute_similarity_sparse(
                     self.similarity_graph_
@@ -833,7 +844,7 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
                 self.dissimilarity_graph_sparse_,
                 edge_attribute="weight"
             )
-            self.connected_graph_.add_nodes_from(range(len(self.data_)))
+            self.connected_graph_.add_nodes_from(range(n_obs))
     
         # ------------------------------------------------------------
         # 6. If still disconnected, connect components with bridge
@@ -848,11 +859,11 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
                 self.dissimilarity_graph_sparse_,
                 edge_attribute="weight"
             )
-            sparse_nx.add_nodes_from(range(len(self.data_)))
+            sparse_nx.add_nodes_from(range(n_obs))
     
             self.connected_graph_ = self.connect_graph_heuristically(
                 sparse_nx,
-                self.data_
+                n_obs
             )
     
             self.dist_matrix_ = self.compute_custom_distance_matrix(
@@ -874,13 +885,13 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
             self.similarity_graph_WSS_sparse_,
             edge_attribute="weight"
         )
-        self.similarity_graph_WSS.add_nodes_from(range(len(self.data_)))
+        self.similarity_graph_WSS.add_nodes_from(range(n_obs))
     
         self.dissimilarity_graph_ = nx.from_scipy_sparse_array(
             self.dissimilarity_graph_sparse_,
             edge_attribute="weight"
         )
-        self.dissimilarity_graph_.add_nodes_from(range(len(self.data_)))
+        self.dissimilarity_graph_.add_nodes_from(range(n_obs))
 
     # ------------------------------------------------------------------
     # ------------------------- FIT ------------------------------------
@@ -944,7 +955,7 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
                 )
             m = self.m_list[0]
 
-        labels = self.coresg_.models_[int(m)].labels_
+        labels = self.coresg_.labels_by_m_[int(m)]
 
         if self.no_noise:
             return self.reassign_noise_via_mst(
@@ -1002,17 +1013,18 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
         ``labels_by_m_[m]`` stores the directly fitted labels.
         ``labels_for(m)`` may additionally apply noise reassignment.
         """
-        labels = self.coresg_.labels_by_m_[m]
-
+        labels = self.coresg_.labels_by_m_[int(m)]
+    
         if no_noise is None:
             no_noise = self.no_noise
-
+    
         if no_noise:
             labels = self.reassign_noise_via_mst(
                 self.mst_graph_,
                 labels,
                 c=c,
             )
+    
         return labels
 
         
