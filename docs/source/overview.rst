@@ -35,8 +35,8 @@ The package is centered around two public classes:
    distance matrices.
 
 ``GraphCoreSGHDBSCAN``
-   The graph-oriented wrapper that constructs a graph, converts it to a
-   graph-derived distance representation, and then runs CoreSGHDBSCAN.
+   The graph-oriented wrapper that constructs a similarity graph, converts it to a
+   weighted structutal dissimilarity graph, and then runs CoreSGHDBSCAN.
 
 For most users, ``GraphCoreSGHDBSCAN`` is the main entry point.
 
