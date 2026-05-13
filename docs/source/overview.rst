@@ -20,7 +20,7 @@ The package currently supports the following capabilities:
 - multiple ``min_samples`` values in a single model run
 - three graph-construction backends plus a precomputed graph mode
 - three metric modes: ``euclidean``, ``cosine``, and ``hybrid_euclidean_cosine``
-- optional relabeling of noise points by MST-based propagation
+- optional relabeling of noise points by density-based label propagation
 - compatibility with NetworkX graphs, dense adjacency matrices, and sparse adjacency matrices in precomputed mode
 - access to HDBSCAN*-style outputs such as labels, probabilities, and condensed trees
 - direct access to stored labels, condensed trees, and optional per-``m`` models
