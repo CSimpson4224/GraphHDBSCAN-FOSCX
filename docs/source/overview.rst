@@ -45,7 +45,7 @@ When to use this package
 
 This package is especially useful when:
 
-- Euclidean distance alone is not the best description of local structure
+- you work with very high-dimensional data, and simple metrics like Euclidean distance alone is not the best description of local structure
 - a similarity graph is more meaningful than a raw feature-space view
 - you want to compare several ``min_samples`` values efficiently in one run
 - you want HDBSCAN*-style hierarchical clustering behavior on top of a graph-based representation
