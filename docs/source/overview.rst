@@ -1,17 +1,15 @@
 Overview
 ========
 
-``coresg-graphhdbscan`` is a Python package for density-based clustering on
-graphs derived from tabular data or provided directly by the user.
+``coresg-graphhdbscan`` is a Python package for density-based clustering on similarity graphs derived from feature-vector data or directly provided by the user.
 
 The package combines two main ideas:
 
 1. construction of a weighted graph that reflects local similarity structure
-2. application of a CoreSGHDBSCAN pipeline on a graph-derived distance representation
+2. application of a specialized CoreSG-HDBSCAN* pipeline designed to operate on graph data representations
 
-This package is designed for settings where Euclidean geometry alone is not the
-desired representation, and where clustering should instead be guided by a
-learned or hand-crafted similarity graph.
+This package is designed for settings where feature-vector representations are not suitable for clustering, such as Euclidean geometry in very high-dimensional spaces, where clustering should instead be guided by a learned or hand-crafted similarity graph as an intrinsically lower-dimensional representation of the data.
+
 
 Main features
 -------------
