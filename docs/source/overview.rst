@@ -19,7 +19,11 @@ The package currently supports the following capabilities:
 - graph-based clustering through ``GraphCoreSGHDBSCAN``
 - multiple ``min_samples`` values in a single model run
 - three graph-construction backends plus a precomputed graph mode
-- three metric modes: ``euclidean``, ``cosine``, and ``hybrid_euclidean_cosine``
+- support for multiple distance metrics during similarity graph construction, including
+  ``euclidean``, ``cosine``, ``correlation``, ``manhattan``, ``jaccard``,
+  ``minkowski``, ``mahalanobis``, ``seuclidean``, and the package-specific
+  ``hybrid_euclidean_cosine``
+- support for ``metric_kwds`` when a distance metric requires additional arguments
 - optional relabeling of noise points by density-based label propagation
 - compatibility with NetworkX graphs, dense adjacency matrices, and sparse adjacency matrices in precomputed mode
 - access to HDBSCAN*-style outputs such as labels, probabilities, and condensed trees
