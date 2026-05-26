@@ -40,6 +40,7 @@ This uses the default configuration:
 - ``min_samples=10``
 - ``sim_graph_method="sc_umap"``
 - ``metric="euclidean"``
+- ``metric_kwds=None``
 - ``add_neighbor=True``
 - ``no_noise=True``
 - ``n_neighbors=15``
@@ -204,13 +205,13 @@ PhenoGraph-style graph
 
 This uses a PhenoGraph-style graph construction.
 
-Using different metric modes
-----------------------------
+Using different distance metrics
+--------------------------------
 
-The package supports three metric modes.
+The ``metric`` parameter controls the distance measure used during
+similarity graph construction.
 
-Euclidean mode
-^^^^^^^^^^^^^^
+The default is:
 
 .. code-block:: python
 
@@ -218,12 +219,37 @@ Euclidean mode
        sim_graph_method="sc_umap",
        metric="euclidean",
    )
+
    model.fit(X)
 
-This is the default mode.
+Other supported distance metrics include:
 
-Cosine mode
-^^^^^^^^^^^
+- ``"cityblock"``
+- ``"cosine"``
+- ``"euclidean"``
+- ``"l1"``
+- ``"l2"``
+- ``"manhattan"``
+- ``"braycurtis"``
+- ``"canberra"``
+- ``"chebyshev"``
+- ``"correlation"``
+- ``"dice"``
+- ``"hamming"``
+- ``"jaccard"``
+- ``"mahalanobis"``
+- ``"minkowski"``
+- ``"rogerstanimoto"``
+- ``"russellrao"``
+- ``"seuclidean"``
+- ``"sokalmichener"``
+- ``"sokalsneath"``
+- ``"sqeuclidean"``
+- ``"yule"``
+- ``"hybrid_euclidean_cosine"``
+
+Cosine distance
+^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
@@ -231,9 +257,74 @@ Cosine mode
        sim_graph_method="sc_gauss",
        metric="cosine",
    )
+
    model.fit(X)
 
-Use this when angular similarity is more meaningful than Euclidean distance.
+Correlation distance
+^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: python
+
+   model = GraphCoreSGHDBSCAN(
+       sim_graph_method="sc_umap",
+       metric="correlation",
+   )
+
+   model.fit(X)
+
+Minkowski distance with metric_kwds
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Some metrics require additional keyword arguments. These can be passed
+through ``metric_kwds``.
+
+.. code-block:: python
+
+   model = GraphCoreSGHDBSCAN(
+       sim_graph_method="sc_umap",
+       metric="minkowski",
+       metric_kwds={"p": 1.5},
+   )
+
+   model.fit(X)
+
+Mahalanobis distance
+^^^^^^^^^^^^^^^^^^^^
+
+For Mahalanobis distance, pass the inverse covariance matrix ``VI``:
+
+.. code-block:: python
+
+   import numpy as np
+
+   VI = np.linalg.pinv(np.cov(X, rowvar=False))
+
+   model = GraphCoreSGHDBSCAN(
+       sim_graph_method="sc_umap",
+       metric="mahalanobis",
+       metric_kwds={"VI": VI},
+   )
+
+   model.fit(X)
+
+Standardized Euclidean distance
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For standardized Euclidean distance, pass the variance vector ``V``:
+
+.. code-block:: python
+
+   import numpy as np
+
+   V = np.var(X, axis=0, ddof=1)
+
+   model = GraphCoreSGHDBSCAN(
+       sim_graph_method="sc_umap",
+       metric="seuclidean",
+       metric_kwds={"V": V},
+   )
+
+   model.fit(X)
 
 Hybrid Euclidean-cosine mode
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -244,10 +335,30 @@ Hybrid Euclidean-cosine mode
        sim_graph_method="sc_umap",
        metric="hybrid_euclidean_cosine",
    )
+
    model.fit(X)
 
 In this mode, full distances remain Euclidean while neighborhood graph
 construction uses cosine geometry.
+
+Unsupported metric and combination
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The metric ``"kulsinski"`` is not supported because it is not available
+in current versions of ``scikit-learn``'s ``pairwise_distances``.
+
+The following combination is intentionally not supported:
+
+.. code-block:: python
+
+   GraphCoreSGHDBSCAN(
+       sim_graph_method="sc_gauss",
+       metric="yule",
+   )
+
+This combination can produce non-finite graph weights. Use
+``metric="yule"`` with ``sim_graph_method="sc_umap"`` or
+``sim_graph_method="jaccard_phenograph"`` instead.
 
 Using precomputed graphs
 ------------------------
