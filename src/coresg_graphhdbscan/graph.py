@@ -239,6 +239,13 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
                 f"Use one of {sorted(valid_metrics)}, or pass a callable metric."
             )
             
+        if sim_graph_method == 'sc_gauss' and metric == 'yule':
+            raise ValueError(
+                "metric='yule' is not supported with sim_graph_method='sc_gauss' "
+                "because this combination can produce non-finite graph weights. "
+                "Use sim_graph_method='sc_umap' or sim_graph_method='jaccard_phenograph' "
+                "with metric='yule', or choose a different metric with sim_graph_method='sc_gauss'."
+            )  
         valid_similarity_backends = {"auto", "default", "numba"}
         if similarity_backend not in valid_similarity_backends:
             raise ValueError(
