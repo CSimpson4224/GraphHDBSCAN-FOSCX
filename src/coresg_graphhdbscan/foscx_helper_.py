@@ -3,7 +3,7 @@ from foscx import FOSCX
 
 def get_clusters_foscx_(tree, foscx_settings):
 
-    FOSCX_DEFAULTS = {"top_M":1,'density':True}                      
+    FOSCX_DEFAULTS = {"top_M":1,'density':True,'metric':'precomputed_similarity'}                      
 
     settings = {**FOSCX_DEFAULTS, **(foscx_settings or {})}
 

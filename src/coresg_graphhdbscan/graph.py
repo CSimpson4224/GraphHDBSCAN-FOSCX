@@ -986,6 +986,10 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
             min_cluster_size=self.min_cluster_size,
             save_models=self.save_models,
         )
+
+        self.coresg_.nn = self.n_neighbors
+        self.coresg_.similarity_graph_WSS_sparse_ = self.similarity_graph_WSS_sparse_
+
         self.coresg_.fit_from_distance_matrix(self.dist_matrix_)
         self.coresg_.run(cluster_selection_method=self.cluster_selection_method,foscx_settings=self.foscx_settings)
         self.models_ = self.coresg_.models_

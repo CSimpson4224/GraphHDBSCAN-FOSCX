@@ -4,6 +4,7 @@ import time
 import warnings
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
+from types import SimpleNamespace
 
 import numpy as np
 import hdbscan
@@ -552,8 +553,16 @@ class CoreSGHDBSCAN:
                     cluster_selection_epsilon,
                 )
             elif cluster_selection_method == "foscx":
+                tree = SimpleNamespace(
+                    single_linkage_tree_=npreturn(single_linkage_tree),
+                    condensed_tree_=condensed_tree_array,
+                    min_cluster_size=effective_min_cluster_size,
+                    min_samples = self.nn,
+                    minimum_spanning_tree_ = npreturn(min_spanning_tree),
+                    _raw_data = self.similarity_graph_WSS_sparse_
+                )
                 labels, probabilities, stabilities = get_clusters_foscx_(
-                    condensed_tree_array,
+                    tree,
                     foscx_settings
                 )
             t2 = time.time()
@@ -636,3 +645,10 @@ def plot_condensed_tree_for_m(models_dict, m: int, title_prefix: str = "", figsi
     else:
         plt.title(f"Condensed Tree (min_samples = {m})")
     plt.show()
+
+
+class npreturn:
+    def __init__(self, array):
+        self._array = array
+    def to_numpy(self):
+        return self._array
