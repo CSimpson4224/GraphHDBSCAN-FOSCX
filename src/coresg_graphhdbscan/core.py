@@ -542,6 +542,15 @@ class CoreSGHDBSCAN:
                     match_reference_implementation,
                     cluster_selection_epsilon,
                 )
+            elif cluster_selection_method == "leaf":
+                labels, probabilities, stabilities = _get_clusters(
+                    condensed_tree_array,
+                    stability_dict,
+                    cluster_selection_method,
+                    allow_single_cluster,
+                    match_reference_implementation,
+                    cluster_selection_epsilon,
+                )
             elif cluster_selection_method == "foscx":
                 labels, probabilities, stabilities = get_clusters_foscx_(
                     condensed_tree_array,

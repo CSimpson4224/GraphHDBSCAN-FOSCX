@@ -1023,7 +1023,7 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
         labels = self.coresg_.labels_by_m_[int(m)]
         
         if self.no_noise:
-            if isinstance(labels[0], int):
+            if isinstance(labels[0], np.int64):
                 labels = self.reassign_noise_via_mst(
                     self.mst_graph_,
                     labels,
@@ -1093,7 +1093,7 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
             no_noise = self.no_noise
     
         if no_noise:
-            if isinstance(labels[0], int):
+            if isinstance(labels[0], np.int64):
                 labels = self.reassign_noise_via_mst(
                     self.mst_graph_,
                     labels,
