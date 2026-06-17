@@ -555,7 +555,7 @@ class CoreSGHDBSCAN:
             elif cluster_selection_method == "foscx":
                 tree = SimpleNamespace(
                     single_linkage_tree_=npreturn(single_linkage_tree),
-                    condensed_tree_=condensed_tree_array,
+                    condensed_tree_=npreturn(condensed_tree_array),
                     min_cluster_size=effective_min_cluster_size,
                     min_samples = self.nn,
                     minimum_spanning_tree_ = npreturn(min_spanning_tree),

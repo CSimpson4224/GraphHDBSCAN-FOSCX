@@ -1,13 +1,19 @@
 import numpy as np
-from foscx import FOSCX
 
 def get_clusters_foscx_(tree, foscx_settings):
+    try:
+        from foscx import FOSCX
+    except ImportError:
+        raise ImportError(
+            "foscx is required for this function but is not installed. "
+            "Install it from: https://github.com/Campello-Lab/FOSC-X"
+        )
 
-    FOSCX_DEFAULTS = {"top_M":1,'density':True,'metric':'precomputed_similarity'}                      
+    FOSCX_DEFAULTS = {"top_M": 5,'kmin': 2, 'kmax': None, 'density': True, 'metric': 'precomputed_similarity'}
 
     settings = {**FOSCX_DEFAULTS, **(foscx_settings or {})}
 
-    fosc_model = FOSCX(**foscx_settings)
+    fosc_model = FOSCX(**settings)
     fosc_model.fit(tree)
     clusters = fosc_model.candidate_nodes_
 
