@@ -192,6 +192,8 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
                 min_cluster_size=None,
                 save_models=False,
                 similarity_backend="auto",
+                cluster_selection_method="eom",
+                foscx_settings={},
                 **kwargs,
             ):
 
@@ -263,6 +265,8 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
         self.add_neighbor = add_neighbor
         self.no_noise = no_noise
         self.n_neighbors = n_neighbors
+        self.cluster_selection_method = cluster_selection_method
+        self.foscx_settings = foscx_settings
         if 'mst_approx' in kwargs:
             heuristic_connect = kwargs.pop('mst_approx')
         self.heuristic_connect = bool(heuristic_connect)
@@ -983,7 +987,7 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
             save_models=self.save_models,
         )
         self.coresg_.fit_from_distance_matrix(self.dist_matrix_)
-        self.coresg_.run()
+        self.coresg_.run(cluster_selection_method=self.cluster_selection_method,foscx_settings=self.foscx_settings)
         self.models_ = self.coresg_.models_
         self.condensed_trees_ = self.coresg_.condensed_trees_
         self.labels_by_m_ = self.coresg_.labels_by_m_
@@ -1017,13 +1021,22 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
             m = self.m_list[0]
 
         labels = self.coresg_.labels_by_m_[int(m)]
-
+        
         if self.no_noise:
-            return self.reassign_noise_via_mst(
-                self.mst_graph_,
-                labels,
-                c=c,
-            )
+            if isinstance(labels[0], int):
+                labels = self.reassign_noise_via_mst(
+                    self.mst_graph_,
+                    labels,
+                    c=c,
+                )
+            else:
+                for i, labs in enumerate(labels):
+                    labels[i] = self.reassign_noise_via_mst(
+                        self.mst_graph_,
+                        labs,
+                        c=c,
+                    )
+                
         return labels
 
     def fit_coresg(self, X, m_list, coresg_kwargs=None):
@@ -1080,11 +1093,19 @@ class GraphCoreSGHDBSCAN(CoreSGHDBSCAN):
             no_noise = self.no_noise
     
         if no_noise:
-            labels = self.reassign_noise_via_mst(
-                self.mst_graph_,
-                labels,
-                c=c,
-            )
+            if isinstance(labels[0], int):
+                labels = self.reassign_noise_via_mst(
+                    self.mst_graph_,
+                    labels,
+                    c=c,
+                )
+            else:
+                for i, labs in enumerate(labels):
+                    labels[i] = self.reassign_noise_via_mst(
+                        self.mst_graph_,
+                        labs,
+                        c=c,
+                    )
     
         return labels
 

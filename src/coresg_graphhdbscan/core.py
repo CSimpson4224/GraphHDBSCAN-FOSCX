@@ -25,6 +25,7 @@ from hdbscan._hdbscan_tree import (
     get_clusters as _get_clusters,
 )
 from hdbscan.plots import CondensedTree as _CondensedTree, SingleLinkageTree as _SingleLinkageTree
+from .foscx_helper_ import get_clusters_foscx_
 
 
 # ===========================================
@@ -468,7 +469,8 @@ class CoreSGHDBSCAN:
             cluster_selection_method: str = "eom",
             allow_single_cluster: bool = False,
             match_reference_implementation: bool = False,
-            cluster_selection_epsilon: float = 0.0) -> "CoreSGHDBSCAN":
+            cluster_selection_epsilon: float = 0.0,
+            foscx_settings: dict = {}) -> "CoreSGHDBSCAN":
         """
         Run Core-SG clustering for all requested ``min_samples`` values.
         
@@ -531,14 +533,20 @@ class CoreSGHDBSCAN:
             effective_min_cluster_size = int(m) if self.min_cluster_size is None else int(self.min_cluster_size)
             condensed_tree_array = _condense_tree(single_linkage_tree, effective_min_cluster_size)
             stability_dict = _compute_stability(condensed_tree_array)
-            labels, probabilities, stabilities = _get_clusters(
-                condensed_tree_array,
-                stability_dict,
-                cluster_selection_method,
-                allow_single_cluster,
-                match_reference_implementation,
-                cluster_selection_epsilon,
-            )
+            if cluster_selection_method == "eom":
+                labels, probabilities, stabilities = _get_clusters(
+                    condensed_tree_array,
+                    stability_dict,
+                    cluster_selection_method,
+                    allow_single_cluster,
+                    match_reference_implementation,
+                    cluster_selection_epsilon,
+                )
+            elif cluster_selection_method == "foscx":
+                labels, probabilities, stabilities = get_clusters_foscx_(
+                    condensed_tree_array,
+                    foscx_settings
+                )
             t2 = time.time()
 
             model = CoreSGModel(
