@@ -165,12 +165,21 @@ class CoreSGModel:
                  probabilities: np.ndarray,
                  stabilities: np.ndarray,
                  condensed_tree_array: np.recarray,
-                 single_linkage_tree: np.ndarray):
+                 single_linkage_tree: np.ndarray,
+                 minimum_spanning_tree: classmethod,
+                 min_cluster_size: int,
+                 min_samples: int,
+                 graph: csr_matrix):
+        
         self.labels_ = labels
         self.probabilities_ = probabilities
         self.cluster_persistence_ = stabilities
         self.condensed_tree_ = _CondensedTree(condensed_tree_array, labels)
         self.single_linkage_tree_ = _SingleLinkageTree(single_linkage_tree)
+        self.minimum_spanning_tree_ = minimum_spanning_tree
+        self.min_cluster_size = min_cluster_size
+        self.min_samples = min_samples
+        self.similarity_graph_ = graph
 
 
 # ===========================================
@@ -573,6 +582,10 @@ class CoreSGHDBSCAN:
                 stabilities=stabilities,
                 condensed_tree_array=condensed_tree_array,
                 single_linkage_tree=single_linkage_tree,
+                minimum_spanning_tree=npreturn(min_spanning_tree),
+                min_cluster_size=effective_min_cluster_size,
+                min_samples = self.nn,
+                graph = self.similarity_graph_WSS_sparse_
             )
             
             self.labels_by_m_[int(m)] = labels
